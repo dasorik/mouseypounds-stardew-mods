@@ -2,14 +2,14 @@
 using StardewModdingAPI;
 using StardewValley;
 using StardewValley.Monsters;
-using Harmony;
+using HarmonyLib;
 
 namespace ShadowFestival
 {
     internal class HarmonyPatcher
     {
         private static IMonitor Monitor;
-        public static void Hook(HarmonyInstance harmony, IMonitor monitor)
+        public static void Hook(Harmony harmony, IMonitor monitor)
         {
             HarmonyPatcher.Monitor = monitor;
 

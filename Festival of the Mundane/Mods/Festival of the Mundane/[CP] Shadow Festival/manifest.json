@@ -2,10 +2,12 @@
     "Name": "Festival of the Mundane",
     "Author": "MouseyPounds and Mr. Podunkian",
     "Version": "1.1.3-unofficial.2-Dasorik",
-    "Description": "Festival of the Mundane code components",
-    "UniqueID": "MouseyPounds.ShadowFestivalCode",
-    "EntryDll": "ShadowFestival.dll",
+    "Description": "The Shadows have their own Spirit's Eve festival in the sewers. Come visit.",
+    "UniqueID": "MouseyPounds.ShadowFestival",
     "MinimumApiVersion": "4.0.0",
     "UpdateKeys": [ "Nexus:4630" ],
+    "ContentPackFor": {
+        "UniqueID": "Pathoschild.ContentPatcher"
+    },
     "Dependencies": []
 }

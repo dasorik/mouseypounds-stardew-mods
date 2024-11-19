@@ -7,20 +7,16 @@ using StardewValley.BellsAndWhistles;
 using StardewValley.Locations;
 using StardewValley.Menus;
 using StardewValley.Objects;
-using Harmony;
+using StardewValley.Extensions;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using xTile;
+using StardewModdingAPI.Events;
+using HarmonyLib;
 
 namespace ShadowFestival
 {
-    public interface IJsonAssetsApi
-    {
-        int GetHatId(string name);
-        void LoadAssets(string path);
-    }
-
-    public class ModEntry: Mod, IAssetLoader, IAssetEditor
+    public class ModEntry: Mod
     {
         internal static ModEntry Instance { get; private set; }
         internal static ModData Data;
@@ -59,10 +55,10 @@ namespace ShadowFestival
             }
             _mapChanged = false;
 
-			_goblinNoseTexture = helper.Content.Load<Texture2D>("assets/Goblin_Nose.png", ContentSource.ModFolder);
+			_goblinNoseTexture = helper.ModContent.Load<Texture2D>("assets/Goblin_Nose.png");
 
 			// Setup Harmony patches
-			HarmonyInstance harmony = HarmonyInstance.Create(this.ModManifest.UniqueID);
+			Harmony harmony = new Harmony(this.ModManifest.UniqueID);
             HarmonyPatcher.Hook(harmony, Monitor);
 
             // Setup event hooks
@@ -70,6 +66,8 @@ namespace ShadowFestival
             helper.Events.GameLoop.DayStarted += GameLoop_DayStarted;
             helper.Events.Display.MenuChanged += Display_MenuChanged;
             helper.Events.Player.Warped += Player_Warped;
+
+            this.Helper.Events.Content.AssetRequested += this.OnAssetRequested;
         }
 
 		public void SetGoblinNosePosition(Vector2 position)
@@ -135,8 +133,8 @@ namespace ShadowFestival
                 Helper.Reflection.GetField<Color>(e.NewLocation, "steamColor").SetValue(new Color(240, 180, 240));
                 // Repatch the two tiles that Sewers.resetLocalState() changes on us.
                 // Beware if that part of our map is edited, we need to manually change these here too.
-                e.NewLocation.setMapTileIndex(31, 16, 77, "Front", 1);
-                e.NewLocation.setMapTileIndex(31, 17, 85, "Buildings", 1);
+                e.NewLocation.setMapTile(31, 16, 77, "Front", "Spirit_Sewer");
+                e.NewLocation.setMapTile(31, 17, 85, "Buildings", "Spirit_Sewer");
                 e.NewLocation.setTileProperty(31, 17, "Buildings", "Action", "FestivalDialogue BigShadow");
                 // Check for Krobus and make him scarce
                 if (e.NewLocation.characters != null)
@@ -213,7 +211,7 @@ namespace ShadowFestival
 						if ((tile != null && tile.TileIndex == 65 && tile.TileSheet.Id == "Spirit_Sewer") ||
 							(tile_2 != null && tile_2.TileIndex == 65 && tile_2.TileSheet.Id == "Spirit_Sewer"))
 						{
-							Game1.currentLightSources.Add(new LightSource(1, new Vector2((x + 0.5F) * Game1.tileSize, (y + 0.5F) * Game1.tileSize), 0.25F, new Color(255, 255, 255)));
+							Game1.currentLightSources.Add(new LightSource($"FOTM_WeirdLightLeft_{x}_{y}", 1, new Vector2((x + 0.5F) * Game1.tileSize, (y + 0.5F) * Game1.tileSize), 0.25F, new Color(255, 255, 255)));
 						}
 
 						// Middle
@@ -221,7 +219,7 @@ namespace ShadowFestival
 						if ((tile != null && tile.TileIndex == 66 && tile.TileSheet.Id == "Spirit_Sewer") ||
 							(tile_2 != null && tile_2.TileIndex == 66 && tile_2.TileSheet.Id == "Spirit_Sewer"))
 						{
-							Game1.currentLightSources.Add(new LightSource(6, new Vector2((x + 0.5F) * Game1.tileSize, (y + 0.75F) * Game1.tileSize), 0.5F, new Color(255, 10, 255)));
+							Game1.currentLightSources.Add(new LightSource($"FOTM_WeirdLightMiddle_{x}_{y}", 6, new Vector2((x + 0.5F) * Game1.tileSize, (y + 0.75F) * Game1.tileSize), 0.5F, new Color(255, 10, 255)));
 						}
 
 						// Right
@@ -229,7 +227,7 @@ namespace ShadowFestival
 						if ((tile != null && tile.TileIndex == 67 && tile.TileSheet.Id == "Spirit_Sewer") ||
 							(tile_2 != null && tile_2.TileIndex == 67 && tile_2.TileSheet.Id == "Spirit_Sewer"))
 						{
-							Game1.currentLightSources.Add(new LightSource(1, new Vector2((x + 0.5F) * Game1.tileSize, (y + 0.5F) * Game1.tileSize), 0.25F, new Color(255, 10, 10)));
+							Game1.currentLightSources.Add(new LightSource($"FOTM_WeirdLightRight_{x}_{y}", 1, new Vector2((x + 0.5F) * Game1.tileSize, (y + 0.5F) * Game1.tileSize), 0.25F, new Color(255, 10, 10)));
 						}
 					}
 				}
@@ -297,7 +295,7 @@ namespace ShadowFestival
 
 		public void AddWeirdLight(GameLocation location, int x, int y)
 		{
-			LightSource weird_light = new LightSource(LightSource.sconceLight, new Vector2((x + 0.5F) * Game1.tileSize, (y + 0.5F) * Game1.tileSize), 1, new Color(255, 10, 10));
+			LightSource weird_light = new LightSource($"FOTM_WeirdLight_{x}_{y}", LightSource.sconceLight, new Vector2((x + 0.5F) * Game1.tileSize, (y + 0.5F) * Game1.tileSize), 1, new Color(255, 10, 10));
 
 			_weirdLights.Add(weird_light);
 			Game1.currentLightSources.Add(weird_light);
@@ -336,63 +334,21 @@ namespace ShadowFestival
 			if (IsShadowFestivalToday())
             {
                 Monitor.Log("It's Shadow Festival Day!");
-                IJsonAssetsApi api = Helper.ModRegistry.GetApi<IJsonAssetsApi>("spacechase0.JsonAssets");
-                if (api == null)
-                {
-                    Monitor.Log("Can't load JSON Assets API, so custom hats will not be available", LogLevel.Warn);
-                    return;
-                }
-                else
-                {
-                    // Setting up special vendor. First, 3 vanilla hats.
-                    VendorItems.Clear();
-                    VendorItems.Add(new Hat(37), new int[] { 5000, 2147483647 });
-                    VendorItems.Add(new Hat(38), new int[] { 5000, 2147483647 });
-                    VendorItems.Add(new Hat(36), new int[] { 10000, 2147483647 });
-                    // Now for JA hats, whose names are all hardcoded.
-                    int HatId;
-                    Monitor.Log("Adding calming hats to Vendor stock");
-                    foreach (string hatName in Data.CalmingHats)
-                    {
-                        HatId = api.GetHatId(hatName);
-                        if (HatId != -1)
-                        {
-                            VendorItems.Add(new Hat(HatId), new int[] { 750, 2147483647 });
-                        }
-                        else
-                        {
-                            Monitor.Log($"Error adding {hatName} to Vendor stock", LogLevel.Warn);
-                        }
-                    }
-                    Monitor.Log("Adding other hats to Vendor stock");
-                    foreach (string hatName in Data.OtherHats)
-                    {
-                        HatId = api.GetHatId(hatName);
-                        if (HatId != -1)
-                        {
-                            VendorItems.Add(new Hat(HatId), new int[] { 500, 2147483647 });
-                        }
-                        else
-                        {
-                            Monitor.Log($"Error adding {hatName} to Vendor stock", LogLevel.Warn);
-                        }
-                    }
-                }
 
                 // Make sure our asset changes happened
-                Helper.Content.InvalidateCache("Data/mail");
-                Helper.Content.InvalidateCache("Characters/Dialogue/Krobus");
-                Helper.Content.InvalidateCache("Strings/StringsFromCSFiles");
-                Helper.Content.InvalidateCache("Maps/Sewer");
+                Helper.GameContent.InvalidateCache("Data/mail");
+                Helper.GameContent.InvalidateCache("Characters/Dialogue/Krobus");
+                Helper.GameContent.InvalidateCache("Strings/StringsFromCSFiles");
+                Helper.GameContent.InvalidateCache("Maps/Sewer");
             }
             else
             {
                 // Trigger another invalidation to remove our changes
                 if (_mapChanged)
                 {
-                    Helper.Content.InvalidateCache("Maps/Sewer");
-                    Helper.Content.InvalidateCache("Characters/Dialogue/Krobus");
-                    Helper.Content.InvalidateCache("Strings/StringsFromCSFiles");
+                    Helper.GameContent.InvalidateCache("Maps/Sewer");
+                    Helper.GameContent.InvalidateCache("Characters/Dialogue/Krobus");
+                    Helper.GameContent.InvalidateCache("Strings/StringsFromCSFiles");
                     _mapChanged = false;
                 }
             }
@@ -426,17 +382,13 @@ namespace ShadowFestival
                 Game1.currentLocation.Name.Equals("Sewer") &&
                 Game1.activeClickableMenu == null &&
                 e.Button.IsActionButton()
-                )
+            )
             {
                 //Monitor.VerboseLog($"Right-click intercepted on the Festival map at {e.Cursor.GrabTile.X}, {e.Cursor.GrabTile.Y}");
                 if (VendorTiles.Contains(e.Cursor.GrabTile))
                 {
                     Helper.Input.Suppress(e.Button);
-                    //Monitor.VerboseLog("It was a boat click, showing vendor menu");
-                    ShopMenu shop = new ShopMenu(VendorItems, 0, "Hatmouse");
-                    string dialogueKey = $"shop-menu.message{ModEntry.Random.Next(3)}";
-                    shop.potraitPersonDialogue = Game1.parseText(Helper.Translation.Get(dialogueKey), Game1.dialogueFont, 304);
-                    Game1.activeClickableMenu = shop;
+                    bool opened = Utility.TryOpenShopMenu("MouseyPounds.FOTM_HatVendor", ownerName: null);
                 }
                 else
                 {
@@ -527,48 +479,6 @@ namespace ShadowFestival
             }
         }
 
-        // Asset Editing and Loading
-        public bool CanEdit<T>(IAssetInfo asset)
-        {
-            return (asset.AssetNameEquals("Data/mail") || asset.AssetNameEquals("Characters/Dialogue/Krobus") || asset.AssetNameEquals("Strings/StringsFromCSFiles"));
-        }
-        public void Edit<T>(IAssetData asset)
-        {
-            IDictionary<string, string> data = asset.AsDictionary<string, string>().Data;
-            if (asset.AssetNameEquals("Data/mail"))
-            {
-                Monitor.Log("Adding our mail to Data/mail");
-                data["Wizard_ShadowFestival"] = Helper.Translation.Get("wizard-letter");
-            }
-            else if (IsShadowFestivalToday() && asset.AssetNameEquals("Characters/Dialogue/Krobus"))
-            {
-                Monitor.Log("Adding our changes to Krobus standard dialogue");
-                data["fall_27"] = Helper.Translation.Get("krobus-dialogue-known");
-                data["Sat"] = Helper.Translation.Get("krobus-dialogue-known");
-            }
-            else if (IsShadowFestivalToday() && asset.AssetNameEquals("Strings/StringsFromCSFiles"))
-            {
-                Monitor.Log("Adding our changes to Krobus intro dialogue");
-                data["NPC.cs.3990"] = Helper.Translation.Get("krobus-dialogue-unknown");
-            }
-        }
-        public bool CanLoad<T>(IAssetInfo asset)
-        {
-            return (asset.AssetNameEquals("Maps/Sewer") && IsShadowFestivalToday());
-        }
-        public T Load<T>(IAssetInfo asset)
-        {
-            if (asset.AssetNameEquals("Maps/Sewer"))
-            {
-                Monitor.Log("Loading our replacement Sewer map");
-                Map map = this.Helper.Content.Load<Map>("assets/Sewer.tbin");
-                _mapChanged = true;
-                return (T)(object)map;
-            }
-
-            throw new NotSupportedException($"Unexpected asset: {asset.AssetName}");
-        }
-
         // Utility functions
         public bool IsShadowFestivalToday()
         {
@@ -587,6 +497,45 @@ namespace ShadowFestival
             Game1.messagePause = true;
             Game1.warpFarmer("Forest", 94, 100, 2);
 			Game1.fadeToBlackAlpha = 1.0F;
+        }
+
+        private void OnAssetRequested(object sender, AssetRequestedEventArgs e)
+        {
+            if (e.Name.IsEquivalentTo("Maps/Sewer") && IsShadowFestivalToday())
+            {
+                Monitor.Log("Loading our replacement Sewer map");
+                e.LoadFromModFile<Map>("assets/Sewer.tbin", AssetLoadPriority.High);
+                _mapChanged = true;
+            }
+
+            if (e.Name.IsEquivalentTo("Data/mail"))
+            {
+                e.Edit(asset =>
+                {
+                    var data = asset.AsDictionary<string, string>().Data;
+                    Monitor.Log("Adding our mail to Data/mail");
+                    data["Wizard_ShadowFestival"] = Helper.Translation.Get("wizard-letter");
+                });
+            }
+            else if (IsShadowFestivalToday() && e.Name.IsEquivalentTo("Characters/Dialogue/Krobus"))
+            {
+                e.Edit(asset =>
+                {
+                    var data = asset.AsDictionary<string, string>().Data;
+                    Monitor.Log("Adding our changes to Krobus standard dialogue");
+                    data["fall_27"] = Helper.Translation.Get("krobus-dialogue-known");
+                    data["Sat"] = Helper.Translation.Get("krobus-dialogue-known");
+                });
+            }
+            else if (IsShadowFestivalToday() && e.Name.IsEquivalentTo("Strings/StringsFromCSFiles"))
+            {
+                e.Edit(asset =>
+                {
+                    var data = asset.AsDictionary<string, string>().Data;
+                    Monitor.Log("Adding our changes to Krobus intro dialogue");
+                    data["NPC.cs.3990"] = Helper.Translation.Get("krobus-dialogue-unknown");
+                });
+            }
         }
     }
 }

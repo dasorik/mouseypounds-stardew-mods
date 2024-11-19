@@ -10,10 +10,10 @@ namespace ShadowFestival
     class ModData
     {
         public List<string> CalmingHats { get; set; } = new List<string> {
-            "Imposing Mask", "Shamanic Mask", "Shady Mask", "Shady Bowed Mask"
+            "ImposingMask", "ShamanicMask", "ShadyMask", "ShadyBowedMask"
         };
         public List<string> OtherHats { get; set; } = new List<string> {
-            "Strange Bun Hat"
+            "StrangeBunHat"
         };
     }
 }

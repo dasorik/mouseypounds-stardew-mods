@@ -126,7 +126,7 @@ namespace ShadowFestival
 				return false;
 			}
 
-			Game1.player.addItemByMenuIfNecessary(new SVObject(item_index, 1));
+			Game1.player.addItemByMenuIfNecessary(new SVObject(item_index.ToString(), 1));
 			Game1.playSound(sound);
 
 			claimedPrizes.Add(item_index);
@@ -548,7 +548,7 @@ namespace ShadowFestival
 					shake_amount.Y = Game1.random.Next(-1, 2) * 2;
 				}
 
-				StardewValley.BellsAndWhistles.SpriteText.drawStringWithScrollCenteredAt(b, calloutText, (int)(drawPosition.X + shake_amount.X), (int)(drawPosition.Y + shake_amount.Y), "", alpha, -1, StardewValley.BellsAndWhistles.SpriteText.scrollStyle_speechBubble, 0.88F, false);
+				StardewValley.BellsAndWhistles.SpriteText.drawStringWithScrollCenteredAt(b, calloutText, (int)(drawPosition.X + shake_amount.X), (int)(drawPosition.Y + shake_amount.Y), "", alpha, null, StardewValley.BellsAndWhistles.SpriteText.scrollStyle_speechBubble, 0.88F, false);
 			}
 			
 			public void Update(GameTime time)
