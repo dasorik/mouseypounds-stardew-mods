@@ -311,7 +311,7 @@ namespace ShadowFestival
                 Game1.currentLocation.Name.Equals("Forest")
                 )
             {
-                Dictionary<ISalable, int[]> shopStock = Helper.Reflection.GetField<Dictionary<ISalable, int[]>>(shop, "itemPriceAndStock").GetValue();
+                Dictionary<ISalable, ItemStockInformation> shopStock = Helper.Reflection.GetField<Dictionary<ISalable, ItemStockInformation>>(shop, "itemPriceAndStock").GetValue();
                 List<ISalable> shopForSale = Helper.Reflection.GetField<List<ISalable>>(shop, "forSale").GetValue();
                 foreach (ISalable item in shopStock.Keys.ToArray())
                 {
